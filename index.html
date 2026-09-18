@@ -1,0 +1,154 @@
+// LocalStorage मधून डेटा लोड करणे किंवा रिकामा ॲरे तयार करणे
+let applications = JSON.parse(localStorage.getItem('college_apps')) || [];
+
+// टॅब बदलणे (Form <-> Admin)
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    if(tabId === 'admin-tab') loadAdminData();
+}
+
+// अर्ज सबमिट करणे
+document.getElementById('admissionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const newApp = {
+        id: 'REG' + Date.now(),
+        name: document.getElementById('studentName').value,
+        class: document.getElementById('studentClass').value,
+        div: document.getElementById('studentDiv').value,
+        gender: document.getElementById('studentGender').value,
+        caste: document.getElementById('studentCaste').value,
+        type: document.getElementById('appType').value,
+        mobile: document.getElementById('studentMobile').value,
+        email: document.getElementById('studentEmail').value,
+        dob: document.getElementById('studentDOB').value,
+        address: document.getElementById('studentAddress').value,
+        status: 'Pending' // सुरुवातीला प्रलंबित
+    };
+
+    applications.push(newApp);
+    localStorage.setItem('college_apps', JSON.stringify(applications));
+    
+    alert('🎉 अर्ज यशस्वीरीत्या सबमिट झाला आहे! ॲडमिन मंजुरी प्रलंबित आहे.');
+    document.getElementById('admissionForm').reset();
+});
+
+// ॲडमिन लॉगिन व्हेरिफिकेशन
+function verifyLogin() {
+    const pass = document.getElementById('adminPassword').value;
+    if(pass === "admin123") { // तुम्ही तुमचा पासवर्ड इथे बदलू शकता
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('dashboardSection').style.display = 'block';
+        loadAdminData();
+    } else {
+        alert('❌ चुकीचा पासवर्ड! कृपया पुन्हा प्रयत्न करा.');
+    }
+}
+
+function logout() {
+    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('dashboardSection').style.display = 'none';
+    document.getElementById('adminPassword').value = '';
+}
+
+// डॅशबोर्ड आणि MIS डेटा लोड करणे
+function loadAdminData() {
+    const fClass = document.getElementById('filterClass').value;
+    const fGender = document.getElementById('filterGender').value;
+    
+    const tbody = document.getElementById('studentTableBody');
+    tbody.innerHTML = '';
+    
+    let filtered = applications.filter(app => {
+        return (fClass === 'All' || app.class === fClass) && (fGender === 'All' || app.gender === fGender);
+    });
+
+    // काउंटर्स अपडेट करणे
+    document.getElementById('totalApps').innerText = filtered.length;
+    document.getElementById('approvedApps').innerText = filtered.filter(a => a.status === 'Approved').length;
+    document.getElementById('pendingApps').innerText = filtered.filter(a => a.status === 'Pending').length;
+
+    // टेबल भरणे
+    filtered.forEach((app, index) => {
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td><strong>${app.name}</strong></td>
+            <td>${app.class}</td>
+            <td>${app.div}</td>
+            <td>${app.gender}</td>
+            <td>${app.caste}</td>
+            <td>${app.type}</td>
+            <td><span style="color:${app.status === 'Approved' ? 'green' : 'orange'}">${app.status}</span></td>
+            <td>
+                ${app.status === 'Pending' ? `<button onclick="updateStatus('\${app.id}', 'Approved')" class="btn-success" style="padding:2px 5px; font-size:12px;">Approve</button>` : ''}
+                <button onclick="deleteApp('${app.id}')" class="btn-danger" style="padding:2px 5px; font-size:12px;">X</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    generateMISReport();
+}
+
+// स्टेटस अपडेट (Approve) करणे
+function updateStatus(id, newStatus) {
+    applications = applications.map(app => app.id === id ? {...app, status: newStatus} : app);
+    localStorage.setItem('college_apps', JSON.stringify(applications));
+    loadAdminData();
+}
+
+// अर्ज डिलीट करणे
+function deleteApp(id) {
+    if(confirm('तुम्हाला हा अर्ज खरोखर डिलीट करायचा आहे का?')) {
+        applications = applications.filter(app => app.id !== id);
+        localStorage.setItem('college_apps', JSON.stringify(applications));
+        loadAdminData();
+    }
+}
+
+// स्वयंचलित MIS सारांश गणना (Class-wise Metrics)
+function generateMISReport() {
+    const classes = ['FYBA', 'FYBSC', 'FYBCOM', 'SYBA', 'SYBSC', 'SYBCOM', 'TYBA', 'TYBSC', 'TYBCOM'];
+    const misBody = document.getElementById('misTableBody');
+    misBody.innerHTML = '';
+
+    classes.forEach(cls => {
+        let classApps = applications.filter(a => a.class === cls);
+        if(classApps.length >= 0) { // सर्व वर्ग दाखवण्यासाठी
+            let total = classApps.length;
+            let male = classApps.filter(a => a.gender === 'Male').length;
+            let female = classApps.filter(a => a.gender === 'Female').length;
+            let scholarship = classApps.filter(a => a.type === 'Scholarship').length;
+            let paying = classApps.filter(a => a.type === 'Paying').length;
+
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${cls}</strong></td>
+                <td>${total}</td>
+                <td>${male}</td>
+                <td>${female}</td>
+                <td>${scholarship}</td>
+                <td>${paying}</td>
+            `;
+            misBody.appendChild(tr);
+        }
+    });
+}
+
+// Excel/CSV मध्ये डेटा एक्सपोर्ट करणे
+function exportToCSV() {
+    let csvContent = "data:text/csv;charset=utf-8,ID,Name,Class,Division,Gender,Caste,Type,Status\n";
+    applications.forEach(app => {
+        csvContent += `${app.id},${app.name},${app.class},${app.div},${app.gender},${app.caste},${app.type},${app.status}\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "College_Admission_Report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+              
