@@ -1,154 +1,246 @@
-// LocalStorage मधून डेटा लोड करणे किंवा रिकामा ॲरे तयार करणे
-let applications = JSON.parse(localStorage.getItem('college_apps')) || [];
+<!doctype html>
+<html lang="mr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>College Admission Dashboard</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#6b7280;--primary:#315efb;--border:#e5e7eb;--ok:#15803d;--danger:#dc2626}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,"Noto Sans Devanagari",sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#172554;color:#fff;padding:18px 22px;position:sticky;top:0;z-index:10}
+header h1{margin:0;font-size:22px} header p{margin:5px 0 0;opacity:.8;font-size:13px}
+.layout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 80px)}
+aside{background:#fff;border-right:1px solid var(--border);padding:16px;position:sticky;top:80px;height:calc(100vh - 80px)}
+nav button{width:100%;text-align:left;border:0;background:transparent;padding:12px;border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:14px}
+nav button.active,nav button:hover{background:#eef2ff;color:#1d4ed8}
+main{padding:22px;max-width:1400px;width:100%;margin:auto}
+.view{display:none}.view.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:17px}.metric{font-size:28px;font-weight:700;margin-top:7px}.label{color:var(--muted);font-size:13px}
+.panel{background:#fff;border:1px solid var(--border);border-radius:14px;padding:20px;margin-top:18px}
+.toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font-size:14px}
+textarea{min-height:75px;resize:vertical}label{display:block;font-size:13px;font-weight:600;margin:12px 0 6px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px}
+.section-title{font-size:16px;font-weight:700;margin:22px 0 4px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.btn{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:600}.primary{background:var(--primary);color:#fff}.secondary{background:#eef2ff;color:#1d4ed8}.danger{background:#fee2e2;color:#b91c1c}.ghost{background:#f3f4f6;color:#374151}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}th{background:#f9fafb}
+.badge{display:inline-block;padding:4px 8px;border-radius:99px;background:#ecfdf5;color:var(--ok);font-size:11px;font-weight:700}
+.actions{display:flex;gap:7px;flex-wrap:wrap}
+.doc-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.doc{border:1px dashed #cbd5e1;padding:12px;border-radius:10px}
+.small{font-size:12px;color:var(--muted)}
+@media(max-width:900px){.layout{grid-template-columns:1fr}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--border)}.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){main{padding:12px}.cards,.grid,.grid2,.doc-list{grid-template-columns:1fr}.toolbar{align-items:stretch}}
+@media print{header,aside,.toolbar,.actions,.no-print{display:none!important}.layout{display:block}main{padding:0}.panel{border:0}}
+</style>
+</head>
+<body>
+<header>
+  <h1>महाविद्यालय प्रवेश अर्ज व्यवस्थापन प्रणाली</h1>
+  <p>Application Form • Dashboard • Student Records • Documents</p>
+</header>
+<div class="layout">
+<aside>
+<nav>
+<button class="active" onclick="showView('dashboard',this)">🏠 Dashboard</button>
+<button onclick="showView('application',this)">📝 नवीन Application</button>
+<button onclick="showView('students',this)">👨‍🎓 Students</button>
+<button onclick="showView('mis',this)">📊 MIS Report</button>
+<button onclick="showView('documents',this)">📎 Documents</button>
+</nav>
+</aside>
+<main>
 
-// टॅब बदलणे (Form <-> Admin)
-function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    if(tabId === 'admin-tab') loadAdminData();
+<section id="dashboard" class="view active">
+<h2>Dashboard</h2>
+<div class="cards">
+<div class="card"><div class="label">एकूण Applications</div><div class="metric" id="mTotal">0</div></div>
+<div class="card"><div class="label">Draft</div><div class="metric" id="mDraft">0</div></div>
+<div class="card"><div class="label">Submitted</div><div class="metric" id="mSubmitted">0</div></div>
+<div class="card"><div class="label">Documents</div><div class="metric" id="mDocs">0</div></div>
+</div>
+<div class="panel">
+<div class="toolbar"><div><h3 style="margin:0">Recent Applications</h3><div class="small">या ब्राउझरमध्ये स्थानिकरीत्या जतन केलेले अर्ज</div></div>
+<button class="btn primary" onclick="newApplication()">+ नवीन अर्ज</button></div>
+<div id="recent"></div>
+</div>
+</section>
+
+<section id="application" class="view">
+<div class="toolbar"><div><h2 id="formTitle">नवीन Application Form</h2><div class="small">Required fields (*) भरून Save करा.</div></div>
+<div class="actions"><button class="btn ghost" onclick="clearForm()">Reset</button><button class="btn secondary" onclick="saveDraft()">Save Draft</button><button class="btn primary" onclick="submitForm()">Submit</button></div></div>
+
+<form id="admissionForm">
+<input type="hidden" id="editId">
+<div class="panel">
+<div class="section-title">1. Course & Office Details</div>
+<div class="grid">
+<div><label>Course / Class *</label><select id="course" required><option value="">Select</option><option>FYBA</option><option>FYBSC</option><option>FYBCOM</option>
+<option>SYBA</option><option>SYBSC</option><option>SYBCOM</option>
+<option>TYBA</option><option>TYBSC</option><option>TYBCOM</option></select></div>
+<div><label>Registration No</label><input id="registrationNo"></div>
+<div><label>Roll No</label><input id="rollNo"></div>
+<div><label>Date of Admission</label><input id="admissionDate" type="date"></div>
+<div><label>Application Type *</label><select id="category"><option>Scholarship</option><option>Open</option><option>Paying</option></select></div>
+<div><label>Caste</label><select id="caste"><option>Open</option><option>SC</option><option>ST</option><option>OBC</option><option>VJ</option><option>NT-A</option><option>NT-B</option><option>NT-C</option><option>NT-D</option><option>SBC</option><option>EWS</option><option>Other</option></select></div>
+<div><label>Clerk Sign / Office Note</label><input id="officeNote"></div>
+</div>
+
+<div class="section-title">2. Personal Details</div>
+<div class="grid">
+<div><label>Surname *</label><input id="surname" required></div>
+<div><label>First Name *</label><input id="firstName" required></div>
+<div><label>Father / Husband Name *</label><input id="fatherName" required></div>
+<div><label>Mother Name *</label><input id="motherName"></div>
+<div><label>Permanent Address *</label><input id="address" required></div>
+<div><label>Village / City</label><input id="village"></div>
+<div><label>Taluka</label><input id="taluka"></div>
+<div><label>District</label><input id="district"></div>
+<div><label>PIN Code</label><input id="pin"></div>
+<div><label>Student WhatsApp No</label><input id="studentPhone" inputmode="numeric"></div>
+<div><label>Parent Contact No</label><input id="parentPhone" inputmode="numeric"></div>
+<div><label>Date of Birth</label><input id="dob" type="date"></div>
+<div><label>Gender</label><select id="gender"><option>Male</option><option>Female</option><option>Other</option></select></div>
+<div><label>Student E-Mail ID</label><input id="email" type="email"></div>
+<div><label>Student Aadhaar No</label><input id="aadhaar" inputmode="numeric" maxlength="12"></div>
+<div><label>Bank Account No</label><input id="bankAccount" inputmode="numeric"></div>
+<div><label>Name of Bank</label><input id="bankName"></div>
+<div><label>IFSC Code</label><input id="ifsc"></div>
+<div><label>ABC ID</label><input id="abcId"></div>
+<div><label>Physically Disabled</label><select id="disabled"><option>No</option><option>Yes</option></select></div>
+</div>
+
+<div class="section-title">3. Previous Exam Details</div>
+<div class="grid">
+<div><label>Exam</label><input id="prevExam" placeholder="H.S.C / Diploma"></div>
+<div><label>Seat No</label><input id="seatNo"></div>
+<div><label>Month & Year of Passing</label><input id="passing"></div>
+<div><label>Exam Center</label><input id="examCenter"></div>
+<div><label>Previous School / College</label><input id="prevCollege"></div>
+<div><label>Total Marks</label><input id="totalMarks" type="number"></div>
+<div><label>Marks Obtained</label><input id="marksObtained" type="number"></div>
+<div><label>Percentage</label><input id="percentage" type="number" step="0.01"></div>
+</div>
+
+<div class="section-title">4. Subject-wise Marks</div>
+<div class="grid2">
+<div><label>Subjects & Marks</label><textarea id="subjects" placeholder="उदा. English - 44&#10;Marathi - 53&#10;Mathematics - 71"></textarea></div>
+<div><label>Notes</label><textarea id="notes"></textarea></div>
+</div>
+
+<div class="section-title">5. Documents</div>
+<div class="doc-list">
+<div class="doc"><label>Passport Photo</label><input id="photo" type="file" accept="image/*"></div>
+<div class="doc"><label>Aadhaar Card</label><input id="aadhaarDoc" type="file" accept="image/*,.pdf"></div>
+<div class="doc"><label>SSC Marksheet / Certificate</label><input id="sscDoc" type="file" accept="image/*,.pdf"></div>
+<div class="doc"><label>HSC Marksheet / Certificate</label><input id="hscDoc" type="file" accept="image/*,.pdf"></div>
+<div class="doc"><label>Caste Certificate</label><input id="casteDoc" type="file" accept="image/*,.pdf"></div>
+<div class="doc"><label>Domicile / Age Certificate</label><input id="domicileDoc" type="file" accept="image/*,.pdf"></div>
+<div class="doc"><label>Income Certificate</label><input id="incomeDoc" type="file" accept="image/*,.pdf"></div>
+<div class="doc"><label>Bank Passbook</label><input id="bankDoc" type="file" accept="image/*,.pdf"></div>
+</div>
+</div>
+</form>
+</section>
+
+<section id="students" class="view">
+<div class="toolbar"><div><h2>Student Records</h2></div><input id="search" placeholder="नाव / Registration / Mobile शोधा" oninput="renderStudents()" style="max-width:320px"></div>
+<div class="panel" id="studentTable"></div>
+</section>
+
+
+<section id="mis" class="view">
+<div class="toolbar">
+  <div><h2>MIS Report</h2><div class="small">Class-wise • Male/Female • Caste • Application Type</div></div>
+  <div class="actions"><button class="btn secondary" onclick="exportMIS()">Export CSV</button><button class="btn ghost" onclick="window.print()">Print</button></div>
+</div>
+<div class="panel">
+  <div class="grid">
+    <div><label>Class Filter</label><select id="misClass" onchange="renderMIS()"><option value="ALL">All Classes</option></select></div>
+    <div><label>Gender Filter</label><select id="misGender" onchange="renderMIS()"><option value="ALL">All</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+    <div><label>Application Type</label><select id="misType" onchange="renderMIS()"><option value="ALL">All</option><option>Scholarship</option><option>Open</option><option>Paying</option></select></div>
+  </div>
+</div>
+<div class="panel">
+  <h3>Class-wise Summary</h3>
+  <div id="misClassTable"></div>
+</div>
+<div class="panel">
+  <h3>Gender Summary</h3>
+  <div id="misGenderTable"></div>
+</div>
+<div class="panel">
+  <h3>Caste Summary</h3>
+  <div id="misCasteTable"></div>
+</div>
+<div class="panel">
+  <h3>Application Type Summary</h3>
+  <div id="misTypeTable"></div>
+</div>
+</section>
+<section id="documents" class="view">
+<h2>Documents</h2>
+<div class="panel"><p class="small">Document upload चे metadata अर्जासोबत ठेवले जाते. Production app मध्ये files server/cloud storage मध्ये encrypted स्वरूपात ठेवाव्यात.</p><div id="docTable"></div></div>
+</section>
+</main>
+</div>
+
+<script>
+const KEY='collegeAdmissionApplicationsV1';
+let apps=JSON.parse(localStorage.getItem(KEY)||'[]');
+const fields=['course','registrationNo','rollNo','admissionDate','category','caste','officeNote','surname','firstName','fatherName','motherName','address','village','taluka','district','pin','studentPhone','parentPhone','dob','gender','email','aadhaar','bankAccount','bankName','ifsc','abcId','disabled','prevExam','seatNo','passing','examCenter','prevCollege','totalMarks','marksObtained','percentage','subjects','notes'];
+const classList=['FYBA','FYBSC','FYBCOM','SYBA','SYBSC','SYBCOM','TYBA','TYBSC','TYBCOM'];
+const docFields=['photo','aadhaarDoc','sscDoc','hscDoc','casteDoc','domicileDoc','incomeDoc','bankDoc'];
+function v(id){return document.getElementById(id).value.trim()}
+function set(id,val){document.getElementById(id).value=val??''}
+function showView(id,btn){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');if(id==='dashboard')renderDash();if(id==='students')renderStudents();if(id==='mis')renderMIS();if(id==='documents')renderDocs()}
+function newApplication(){clearForm();showView('application',document.querySelectorAll('nav button')[1])}
+function clearForm(){document.getElementById('admissionForm').reset();set('editId','');document.getElementById('formTitle').textContent='नवीन Application Form'}
+function collect(status){
+ let data={id:v('editId')||crypto.randomUUID(),status,updatedAt:new Date().toISOString()};
+ fields.forEach(f=>data[f]=v(f));
+ data.name=[data.surname,data.firstName,data.fatherName].filter(Boolean).join(' ');
+ data.documents=data.documents||{};
+ docFields.forEach(f=>{let el=document.getElementById(f); if(el.files[0])data.documents[f]=el.files[0].name});
+ return data
 }
-
-// अर्ज सबमिट करणे
-document.getElementById('admissionForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const newApp = {
-        id: 'REG' + Date.now(),
-        name: document.getElementById('studentName').value,
-        class: document.getElementById('studentClass').value,
-        div: document.getElementById('studentDiv').value,
-        gender: document.getElementById('studentGender').value,
-        caste: document.getElementById('studentCaste').value,
-        type: document.getElementById('appType').value,
-        mobile: document.getElementById('studentMobile').value,
-        email: document.getElementById('studentEmail').value,
-        dob: document.getElementById('studentDOB').value,
-        address: document.getElementById('studentAddress').value,
-        status: 'Pending' // सुरुवातीला प्रलंबित
-    };
-
-    applications.push(newApp);
-    localStorage.setItem('college_apps', JSON.stringify(applications));
-    
-    alert('🎉 अर्ज यशस्वीरीत्या सबमिट झाला आहे! ॲडमिन मंजुरी प्रलंबित आहे.');
-    document.getElementById('admissionForm').reset();
-});
-
-// ॲडमिन लॉगिन व्हेरिफिकेशन
-function verifyLogin() {
-    const pass = document.getElementById('adminPassword').value;
-    if(pass === "admin123") { // तुम्ही तुमचा पासवर्ड इथे बदलू शकता
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('dashboardSection').style.display = 'block';
-        loadAdminData();
-    } else {
-        alert('❌ चुकीचा पासवर्ड! कृपया पुन्हा प्रयत्न करा.');
-    }
+function saveDraft(){persist(collect('Draft'));alert('Draft saved');}
+function submitForm(){let form=document.getElementById('admissionForm');if(!form.reportValidity())return;persist(collect('Submitted'));alert('Application submitted');}
+function persist(data){let i=apps.findIndex(a=>a.id===data.id);if(i>=0)apps[i]=data;else apps.unshift(data);localStorage.setItem(KEY,JSON.stringify(apps));renderDash()}
+function edit(id){let a=apps.find(x=>x.id===id);if(!a)return;fields.forEach(f=>set(f,a[f]));set('editId',a.id);document.getElementById('formTitle').textContent='Application Edit — '+a.name;showView('application',document.querySelectorAll('nav button')[1])}
+function removeApp(id){if(confirm('हा अर्ज delete करायचा आहे का?')){apps=apps.filter(x=>x.id!==id);localStorage.setItem(KEY,JSON.stringify(apps));renderDash();renderStudents();renderMIS();renderDocs()}}
+function renderDash(){document.getElementById('mTotal').textContent=apps.length;document.getElementById('mDraft').textContent=apps.filter(a=>a.status==='Draft').length;document.getElementById('mSubmitted').textContent=apps.filter(a=>a.status==='Submitted').length;document.getElementById('mDocs').textContent=apps.reduce((n,a)=>n+Object.keys(a.documents||{}).length,0);let r=apps.slice(0,8);document.getElementById('recent').innerHTML=r.length?`<table><tr><th>Name</th><th>Course</th><th>Application Type</th><th>Status</th><th>Updated</th><th>Action</th></tr>${r.map(a=>`<tr><td>${esc(a.name)}</td><td>${esc(a.course)}</td><td>${esc(a.category)}</td><td><span class="badge">${a.status}</span></td><td>${new Date(a.updatedAt).toLocaleDateString('en-IN')}</td><td class="actions"><button class="btn secondary" onclick="edit('${a.id}')">Edit</button><button class="btn ghost" onclick="printApp('${a.id}')">Print</button></td></tr>`).join('')}</table>`:'<p class="small">अजून कोणताही अर्ज नाही.</p>'}
+function renderStudents(){let q=(v('search')||'').toLowerCase();let r=apps.filter(a=>[a.name,a.registrationNo,a.studentPhone].join(' ').toLowerCase().includes(q));let sorted=[...r].sort((a,b)=>classList.indexOf(a.course)-classList.indexOf(b.course));let serialByClass={};document.getElementById('studentTable').innerHTML=`<table><tr><th>Serial No.</th><th>Application</th><th>Name</th><th>Course</th><th>Mobile</th><th>Application Type</th><th>Status</th><th>Actions</th></tr>${sorted.map(a=>{serialByClass[a.course]=(serialByClass[a.course]||0)+1;return `<tr><td>${serialByClass[a.course]}</td><td>${esc(a.registrationNo||a.id.slice(0,8))}</td><td>${esc(a.name)}</td><td>${esc(a.course)}</td><td>${esc(a.studentPhone)}</td><td>${esc(a.category)}</td><td>${a.status}</td><td class="actions"><button class="btn secondary" onclick="edit('${a.id}')">Edit</button><button class="btn ghost" onclick="printApp('${a.id}')">Print</button><button class="btn danger" onclick="removeApp('${a.id}')">Delete</button></td></tr>`}).join('')}</table>`}
+function renderMIS(){
+ const cls=document.getElementById('misClass'); if(cls.options.length===1) classList.forEach(c=>cls.add(new Option(c,c)));
+ const cf=cls.value, gf=v('misGender'), tf=v('misType');
+ const data=apps.filter(a=>(cf==='ALL'||a.course===cf)&&(gf==='ALL'||a.gender===gf)&&(tf==='ALL'||a.category===tf));
+ const count=(arr,key,val)=>arr.filter(x=>x[key]===val).length;
+ document.getElementById('misClassTable').innerHTML='<table><tr><th>Class</th><th>Total</th><th>Male</th><th>Female</th><th>Other</th><th>Scholarship</th><th>Open</th><th>Paying</th></tr>'+
+ classList.map(c=>{let x=data.filter(a=>a.course===c);return `<tr><td><b>${c}</b></td><td>${x.length}</td><td>${count(x,'gender','Male')}</td><td>${count(x,'gender','Female')}</td><td>${count(x,'gender','Other')}</td><td>${count(x,'category','Scholarship')}</td><td>${count(x,'category','Open')}</td><td>${count(x,'category','Paying')}</td></tr>`}).join('')+
+ `<tr><th>Grand Total</th><th>${data.length}</th><th>${count(data,'gender','Male')}</th><th>${count(data,'gender','Female')}</th><th>${count(data,'gender','Other')}</th><th>${count(data,'category','Scholarship')}</th><th>${count(data,'category','Open')}</th><th>${count(data,'category','Paying')}</th></tr></table>`;
+ const genders=['Male','Female','Other'];
+ document.getElementById('misGenderTable').innerHTML='<table><tr><th>Gender</th><th>Total</th>'+classList.map(c=>`<th>${c}</th>`).join('')+'</tr>'+
+ genders.map(g=>`<tr><td>${g}</td><td>${count(data,'gender',g)}</td>${classList.map(c=>`<td>${data.filter(a=>a.gender===g&&a.course===c).length}</td>`).join('')}</tr>`).join('')+
+ `<tr><th>Total</th><th>${data.length}</th>${classList.map(c=>`<th>${data.filter(a=>a.course===c).length}</th>`).join('')}</tr></table>`;
+ const castes=['Open','SC','ST','OBC','VJ','NT-A','NT-B','NT-C','NT-D','SBC','EWS','Other'];
+ document.getElementById('misCasteTable').innerHTML='<table><tr><th>Caste</th><th>Total</th>'+classList.map(c=>`<th>${c}</th>`).join('')+'</tr>'+
+ castes.map(g=>`<tr><td>${g}</td><td>${count(data,'caste',g)}</td>${classList.map(c=>`<td>${data.filter(a=>a.caste===g&&a.course===c).length}</td>`).join('')}</tr>`).join('')+
+ `<tr><th>Total</th><th>${data.length}</th>${classList.map(c=>`<th>${data.filter(a=>a.course===c).length}</th>`).join('')}</tr></table>`;
+ const types=['Scholarship','Open','Paying'];
+ document.getElementById('misTypeTable').innerHTML='<table><tr><th>Application Type</th><th>Total</th>'+classList.map(c=>`<th>${c}</th>`).join('')+'</tr>'+
+ types.map(g=>`<tr><td>${g}</td><td>${count(data,'category',g)}</td>${classList.map(c=>`<td>${data.filter(a=>a.category===g&&a.course===c).length}</td>`).join('')}</tr>`).join('')+
+ `<tr><th>Total</th><th>${data.length}</th>${classList.map(c=>`<th>${data.filter(a=>a.course===c).length}</th>`).join('')}</tr></table>`;
 }
-
-function logout() {
-    document.getElementById('loginSection').style.display = 'block';
-    document.getElementById('dashboardSection').style.display = 'none';
-    document.getElementById('adminPassword').value = '';
+function exportMIS(){
+ const rows=[['Class','Total','Male','Female','Other','Scholarship','Open','Paying']];
+ classList.forEach(c=>{let x=apps.filter(a=>a.course===c);rows.push([c,x.length,x.filter(a=>a.gender==='Male').length,x.filter(a=>a.gender==='Female').length,x.filter(a=>a.gender==='Other').length,x.filter(a=>a.category==='Scholarship').length,x.filter(a=>a.category==='Open').length,x.filter(a=>a.category==='Paying').length])});
+ const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\\n');const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='MIS_Class_Wise_Report.csv';a.click();
 }
-
-// डॅशबोर्ड आणि MIS डेटा लोड करणे
-function loadAdminData() {
-    const fClass = document.getElementById('filterClass').value;
-    const fGender = document.getElementById('filterGender').value;
-    
-    const tbody = document.getElementById('studentTableBody');
-    tbody.innerHTML = '';
-    
-    let filtered = applications.filter(app => {
-        return (fClass === 'All' || app.class === fClass) && (fGender === 'All' || app.gender === fGender);
-    });
-
-    // काउंटर्स अपडेट करणे
-    document.getElementById('totalApps').innerText = filtered.length;
-    document.getElementById('approvedApps').innerText = filtered.filter(a => a.status === 'Approved').length;
-    document.getElementById('pendingApps').innerText = filtered.filter(a => a.status === 'Pending').length;
-
-    // टेबल भरणे
-    filtered.forEach((app, index) => {
-        let tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${index + 1}</td>
-            <td><strong>${app.name}</strong></td>
-            <td>${app.class}</td>
-            <td>${app.div}</td>
-            <td>${app.gender}</td>
-            <td>${app.caste}</td>
-            <td>${app.type}</td>
-            <td><span style="color:${app.status === 'Approved' ? 'green' : 'orange'}">${app.status}</span></td>
-            <td>
-                ${app.status === 'Pending' ? `<button onclick="updateStatus('\${app.id}', 'Approved')" class="btn-success" style="padding:2px 5px; font-size:12px;">Approve</button>` : ''}
-                <button onclick="deleteApp('${app.id}')" class="btn-danger" style="padding:2px 5px; font-size:12px;">X</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    generateMISReport();
-}
-
-// स्टेटस अपडेट (Approve) करणे
-function updateStatus(id, newStatus) {
-    applications = applications.map(app => app.id === id ? {...app, status: newStatus} : app);
-    localStorage.setItem('college_apps', JSON.stringify(applications));
-    loadAdminData();
-}
-
-// अर्ज डिलीट करणे
-function deleteApp(id) {
-    if(confirm('तुम्हाला हा अर्ज खरोखर डिलीट करायचा आहे का?')) {
-        applications = applications.filter(app => app.id !== id);
-        localStorage.setItem('college_apps', JSON.stringify(applications));
-        loadAdminData();
-    }
-}
-
-// स्वयंचलित MIS सारांश गणना (Class-wise Metrics)
-function generateMISReport() {
-    const classes = ['FYBA', 'FYBSC', 'FYBCOM', 'SYBA', 'SYBSC', 'SYBCOM', 'TYBA', 'TYBSC', 'TYBCOM'];
-    const misBody = document.getElementById('misTableBody');
-    misBody.innerHTML = '';
-
-    classes.forEach(cls => {
-        let classApps = applications.filter(a => a.class === cls);
-        if(classApps.length >= 0) { // सर्व वर्ग दाखवण्यासाठी
-            let total = classApps.length;
-            let male = classApps.filter(a => a.gender === 'Male').length;
-            let female = classApps.filter(a => a.gender === 'Female').length;
-            let scholarship = classApps.filter(a => a.type === 'Scholarship').length;
-            let paying = classApps.filter(a => a.type === 'Paying').length;
-
-            let tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${cls}</strong></td>
-                <td>${total}</td>
-                <td>${male}</td>
-                <td>${female}</td>
-                <td>${scholarship}</td>
-                <td>${paying}</td>
-            `;
-            misBody.appendChild(tr);
-        }
-    });
-}
-
-// Excel/CSV मध्ये डेटा एक्सपोर्ट करणे
-function exportToCSV() {
-    let csvContent = "data:text/csv;charset=utf-8,ID,Name,Class,Division,Gender,Caste,Type,Status\n";
-    applications.forEach(app => {
-        csvContent += `${app.id},${app.name},${app.class},${app.div},${app.gender},${app.caste},${app.type},${app.status}\n`;
-    });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "College_Admission_Report.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-              
+function renderDocs(){document.getElementById('docTable').innerHTML=apps.length?`<table><tr><th>Student</th><th>Document</th><th>Filename</th></tr>${apps.flatMap(a=>Object.entries(a.documents||{}).map(([k,n])=>`<tr><td>${esc(a.name)}</td><td>${k}</td><td>${esc(n)}</td></tr>`)).join('')||'<tr><td colspan="3">No uploaded document metadata.</td></tr>'}</table>`:'<p class="small">No applications.</p>'}
+function printApp(id){let a=apps.find(x=>x.id===id);let w=window.open('','_blank');w.document.write(`<html><head><title>Application</title><style>body{font-family:Arial;padding:30px}table{border-collapse:collapse;width:100%}td{border:1px solid #ccc;padding:7px}h1{font-size:20px}</style></head><body><h1>College Admission Application</h1><p><b>Application ID:</b> ${esc(a.id)}</p><table>${fields.filter(f=>a[f]).map(f=>`<tr><td><b>${label(f)}</b></td><td>${esc(a[f])}</td></tr>`).join('')}</table><script>window.print()<\/script></body></html>`);w.document.close()}
+function label(f){return f.replace(/([A-Z])/g,' $1').replace(/^./,x=>x.toUpperCase())}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+renderDash();
+</script>
+</body>
+</html>
